@@ -2,7 +2,6 @@ import json
 import os
 import typing as t
 import urllib.parse
-from turtle import st
 
 import httpx
 import xmltodict
@@ -36,7 +35,7 @@ FailureResponse = t.TypedDict(
 )
 
 
-class Response(t.TypedDict):
+class Response(t.TypedDict, total=False):
     authenticationSuccess: SuccessResponse
     authenticationFailure: FailureResponse
 
