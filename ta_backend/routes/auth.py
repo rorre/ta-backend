@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Query
-from fastapi.responses import RedirectResponse
+from black import traceback
+from fastapi import APIRouter, Depends, Query
+from fastapi.responses import JSONResponse, RedirectResponse
 
 from ta_backend.helper.settings import settings
 from ta_backend.models import User
@@ -20,6 +21,7 @@ async def callback(ticket: str = Query(...)):
     try:
         sso_response = await client.authenticate(ticket)
     except Exception:
+        traceback.print_exc()
         return {"err": "An error has occured."}
 
     user = await User.objects.get_or_create(
@@ -38,4 +40,11 @@ async def callback(ticket: str = Query(...)):
         )
     )
     manager.set_cookie(response, token)
+    return response
+
+
+@router.get("/logout")
+async def logout(user: User = Depends(manager)):
+    response = JSONResponse(content={"message": "Logged out."})
+    response.set_cookie("access-token")
     return response
