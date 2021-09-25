@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 from enum import Enum
 
 import ormar
@@ -33,5 +34,10 @@ class Course(ormar.Model):
     id: ormar.UUID = ormar.UUID(primary_key=True, default=uuid.uuid4)
     name: str = ormar.String(max_length=100)
     matkul: str = ormar.String(max_length=25, choices=list(Subject))
+    datetime_: datetime = ormar.DateTime(name="datetime", timezone=True)
+    link: str = ormar.Text(nullable=True)
+    students_limit = ormar.Integer(nullable=True)
+    notes: str = ormar.Text(nullable=True)
+
     teacher = ormar.ForeignKey(User, related_name="courses_owned")
     students = ormar.ManyToMany(User, related_name="courses_taken")

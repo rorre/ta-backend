@@ -1,47 +1,35 @@
-import typing as t
-
 from fastapi import Depends, FastAPI
 
 from ta_backend.helper.database import database
-from ta_backend.models import Course, User
+from ta_backend.models import User
 from ta_backend.plugins import manager
+from ta_backend.responses import DefaultResponse
 from ta_backend.routes.auth import router as AuthRouter
+from ta_backend.routes.course import router as CourseRouter
 
 app = FastAPI()
 app.include_router(AuthRouter)
+app.include_router(CourseRouter)
 
 
-@app.get("/")
+@app.get("/", response_model=DefaultResponse)
 async def root():
     return {"message": "Hello world!"}
 
 
-@app.get("/check")
-async def chk(user=Depends(manager)):
-    return {"message": f"Hello {user.name}!"}
-
-
-@app.get("/user", response_model=t.List[User])
-async def user():
-    return await User.objects.all()
-
-
-@app.get("/course", response_model=t.List[Course])
-async def course():
-    x = await Course.objects.select_related("teacher").all()
-    print(x)
-    return x
+@app.get(
+    "/me",
+    response_model=User,
+    response_model_exclude={"courses_owned", "courses_taken"},
+)
+async def me(user: User = Depends(manager)):
+    return user
 
 
 @app.on_event("startup")
 async def on_startup():
     if not database.is_connected:
         await database.connect()
-
-    # u1 = await User.objects.create(name="Ren", username="ren")
-    # u2 = await User.objects.create(name="Ben", username="ben")
-    # c = await Course.objects.create(name="asd", matkul="ddp", teacher=u1)
-    # await c.students.add(u2)
 
 
 @app.on_event("shutdown")
