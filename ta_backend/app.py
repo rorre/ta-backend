@@ -1,4 +1,5 @@
 from fastapi import Depends, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from ta_backend.helper.database import database
 from ta_backend.models import User
@@ -10,6 +11,18 @@ from ta_backend.routes.course import router as CourseRouter
 app = FastAPI()
 app.include_router(AuthRouter)
 app.include_router(CourseRouter)
+origins = [
+    "http://localhost",
+    "http://localhost:3000",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/", response_model=DefaultResponse)
