@@ -1,6 +1,6 @@
 from black import traceback
 from fastapi import APIRouter, Depends, Query
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse, HTMLResponse
 
 from ta_backend.helper.settings import settings
 from ta_backend.models import User
@@ -30,7 +30,9 @@ async def callback(ticket: str = Query(...)):
     )
     await user.update(name=sso_response["attributes"]["nama"])
 
-    response = RedirectResponse("/")
+    response = HTMLResponse(
+        content="""<script>window.opener.postMessage("logged", "*")</script>"""
+    )
     token = manager.create_access_token(
         data=dict(
             sub=dict(
