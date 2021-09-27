@@ -2,7 +2,7 @@ import typing as t
 from datetime import datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from ta_backend.models import Course, User
@@ -36,8 +36,37 @@ def _create_coursedict(course: Course, user: User):
 
 
 @router.get("/list", response_model=t.List[CourseResponse])
-async def courses_list(user: User = Depends(manager)):
-    courses = await Course.objects.paginate(20).select_related("teacher").all()
+async def courses_list(user: User = Depends(manager), page: int = Query(1)):
+    courses = await Course.objects.paginate(page, 20).select_related("teacher").all()
+    response = []
+    for c in courses:
+        response.append(_create_coursedict(c, user))
+    return response
+
+
+@router.get("/available", response_model=t.List[CourseResponse])
+async def courses_available(user: User = Depends(manager), page: int = Query(1)):
+    current_time = datetime.utcnow()
+    courses = (
+        await Course.objects.filter(Course.datetime_ > current_time)
+        .paginate(page, 20)
+        .select_related("teacher")
+        .all()
+    )
+    response = []
+    for c in courses:
+        response.append(_create_coursedict(c, user))
+    return response
+
+
+@router.get("/mine", response_model=t.List[CourseResponse])
+async def courses_mine(user: User = Depends(manager), page: int = Query(1)):
+    courses = (
+        await Course.objects.filter(Course.teacher == user)
+        .paginate(page, 20)
+        .select_related("teacher")
+        .all()
+    )
     response = []
     for c in courses:
         response.append(_create_coursedict(c, user))
@@ -51,7 +80,7 @@ async def course_create(course: CourseCreate, user: User = Depends(manager)):
     return _create_coursedict(c, user)
 
 
-@router.get("/{course_id}/enroll", response_model=DefaultResponse)
+@router.post("/{course_id}/enroll", response_model=DefaultResponse)
 async def course_enroll(course_id: UUID, user: User = Depends(manager)):
     c = await Course.objects.get_or_none(id=course_id)
     if not c:
@@ -69,6 +98,20 @@ async def course_enroll(course_id: UUID, user: User = Depends(manager)):
 
     await c.students.add(user)
     return {"message": "Successfully enrolled!"}
+
+
+@router.post("/{course_id}/unenroll", response_model=DefaultResponse)
+async def course_unenroll(course_id: UUID, user: User = Depends(manager)):
+    c = await Course.objects.get_or_none(id=course_id)
+    if not c:
+        raise HTTPException(status_code=404, detail="Course not found!")
+    if c.teacher == user:
+        raise HTTPException(
+            status_code=403, detail="You cannot unenroll to your own course."
+        )
+
+    await c.students.remove(user)
+    return {"message": "Unenrolled from course."}
 
 
 @router.get("/{course_id}/detail", response_model=CourseDetailReponse)
@@ -104,3 +147,14 @@ async def course_update(
         raise HTTPException(status_code=401, detail="You are not allowed to do this.")
     await c.update(**course_data.dict())
     return _create_coursedict(c, user)
+
+
+@router.delete("/{course_id}/delete", response_model=DefaultResponse)
+async def course_delete(course_id: UUID, user: User = Depends(manager)):
+    c = await Course.objects.select_related("teacher").get_or_none(id=course_id)
+    if not c:
+        raise HTTPException(status_code=404, detail="Course not found!")
+    if user != c.teacher:
+        raise HTTPException(status_code=401, detail="You are not allowed to do this.")
+    await c.delete()
+    return {"message": "Course deleted."}
