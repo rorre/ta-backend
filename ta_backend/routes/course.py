@@ -13,7 +13,7 @@ from ta_backend.responses import CourseDetailReponse, CourseResponse, DefaultRes
 class CourseCreate(BaseModel):
     name: str
     matkul: str
-    datetime_: datetime
+    datetime: datetime
     students_limit: t.Optional[int] = None
     notes: t.Optional[str] = ""
     link: t.Optional[str] = ""
@@ -27,7 +27,7 @@ def _create_coursedict(course: Course, user: User):
         "id": str(course.id),
         "name": course.name,
         "matkul": course.matkul,
-        "datetime": course.datetime_,
+        "datetime": course.datetime,
         "teacher": course.teacher.name,
         "students_limit": course.students_limit,
         "students_count": len(course.students),
@@ -48,7 +48,7 @@ async def courses_list(user: User = Depends(manager), page: int = Query(1)):
 async def courses_available(user: User = Depends(manager), page: int = Query(1)):
     current_time = datetime.utcnow()
     courses = (
-        await Course.objects.filter(Course.datetime_ > current_time)
+        await Course.objects.filter(Course.datetime > current_time)
         .paginate(page, 20)
         .select_related("teacher")
         .all()
@@ -91,7 +91,7 @@ async def course_enroll(course_id: UUID, user: User = Depends(manager)):
         )
 
     current_time = datetime.utcnow()
-    if current_time > c.datetime_:
+    if current_time > c.datetime:
         raise HTTPException(status_code=403, detail="Course has already started!")
     if len(c.students) >= c.students_limit:
         raise HTTPException(status_code=403, detail="Course is already full.")
