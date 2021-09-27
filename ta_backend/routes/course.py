@@ -14,9 +14,9 @@ class CourseCreate(BaseModel):
     name: str
     matkul: str
     datetime_: datetime
-    students_limit: t.Optional[int]
-    notes: t.Optional[str]
-    link: t.Optional[str]
+    students_limit: t.Optional[int] = None
+    notes: t.Optional[str] = ""
+    link: t.Optional[str] = ""
 
 
 router = APIRouter(prefix="/course", dependencies=[Depends(manager)])
