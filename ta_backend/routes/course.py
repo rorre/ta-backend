@@ -29,6 +29,7 @@ def _create_coursedict(course: Course, user: User):
         "matkul": Subject(course.matkul).name,
         "datetime": course.datetime,
         "teacher": course.teacher.name,
+        "teacher_npm": course.teacher.npm,
         "students_limit": course.students_limit,
         "students_count": len(course.students),
         "is_enrolled": course.id in user.courses_taken,

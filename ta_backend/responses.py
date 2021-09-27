@@ -14,6 +14,7 @@ class CourseResponse(BaseModel):
     matkul: str
     datetime: datetime
     teacher: str
+    teacher_npm: int
     students_count: int
     students_limit: t.Optional[int]
     is_enrolled: bool
