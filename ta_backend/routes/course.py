@@ -5,7 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
-from ta_backend.models import Course, User
+from ta_backend.models import Course, Subject, User
 from ta_backend.plugins import manager
 from ta_backend.responses import CourseDetailReponse, CourseResponse, DefaultResponse
 
@@ -26,7 +26,7 @@ def _create_coursedict(course: Course, user: User):
     return {
         "id": str(course.id),
         "name": course.name,
-        "matkul": course.matkul,
+        "matkul": Subject(course.matkul).name,
         "datetime": course.datetime,
         "teacher": course.teacher.name,
         "students_limit": course.students_limit,
