@@ -75,7 +75,7 @@ async def courses_available(user: User = Depends(manager), page: int = Query(1))
 @router.get("/mine", response_model=t.List[CourseResponse])
 async def courses_mine(user: User = Depends(manager), page: int = Query(1)):
     courses = (
-        await Course.objects.filter(Course.teacher == user)
+        await Course.objects.filter(Course.teacher.npm == user.npm)
         .paginate(page, 20)
         .select_related("teacher")
         .all()
