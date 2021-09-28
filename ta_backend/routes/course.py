@@ -50,7 +50,12 @@ def _create_coursedict(course: Course, user: User):
 
 @router.get("/list", response_model=t.List[CourseResponse])
 async def courses_list(user: User = Depends(manager), page: int = Query(1)):
-    courses = await Course.objects.paginate(page, 20).select_related("teacher").all()
+    courses = (
+        await Course.objects.paginate(page, 10)
+        .order_by("-datetime")
+        .select_related("teacher")
+        .all()
+    )
     response = []
     for c in courses:
         response.append(_create_coursedict(c, user))
@@ -62,7 +67,8 @@ async def courses_available(user: User = Depends(manager), page: int = Query(1))
     current_time = _current_dt_aware()
     courses = (
         await Course.objects.filter(Course.datetime > current_time)
-        .paginate(page, 20)
+        .paginate(page, 10)
+        .order_by("-datetime")
         .select_related("teacher")
         .all()
     )
@@ -76,7 +82,8 @@ async def courses_available(user: User = Depends(manager), page: int = Query(1))
 async def courses_mine(user: User = Depends(manager), page: int = Query(1)):
     courses = (
         await Course.objects.filter(Course.teacher.npm == user.npm)
-        .paginate(page, 20)
+        .paginate(page, 10)
+        .order_by("-datetime")
         .select_related("teacher")
         .all()
     )
