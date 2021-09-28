@@ -64,9 +64,9 @@ async def courses_list(user: User = Depends(manager), page: int = Query(1)):
 
 @router.get("/available", response_model=t.List[CourseResponse])
 async def courses_available(user: User = Depends(manager), page: int = Query(1)):
-    current_time = _current_dt_aware()
+    current_time = _current_dt_aware().replace(tzinfo=None)
     courses = (
-        await Course.objects.filter(Course.datetime > current_time)
+        await Course.objects.filter(Course.datetime >= current_time)
         .paginate(page, 10)
         .order_by("-datetime")
         .select_related("teacher")
