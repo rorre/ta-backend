@@ -95,6 +95,13 @@ async def courses_mine(user: User = Depends(manager), page: int = Query(1)):
 
 @router.post("/create", response_model=CourseResponse)
 async def course_create(course: CourseCreate, user: User = Depends(manager)):
+    current_time = _current_dt_aware()
+    if course.datetime < current_time:
+        raise HTTPException(
+            status_code=400,
+            detail="You cannot pick date and time that happens in the past.",
+        )
+
     c = await Course.objects.create(**course.dict())
     await c.update(teacher=user)
     return _create_coursedict(c, user)
@@ -166,11 +173,19 @@ async def course_update(
     course_data: CourseCreate,
     user: User = Depends(manager),
 ):
+    current_time = _current_dt_aware()
+    if course_data.datetime < current_time:
+        raise HTTPException(
+            status_code=400,
+            detail="You cannot pick date and time that happens in the past.",
+        )
+
     c = await Course.objects.select_related("teacher").get_or_none(id=course_id)
     if not c:
         raise HTTPException(status_code=404, detail="Course not found!")
     if user != c.teacher:
         raise HTTPException(status_code=401, detail="You are not allowed to do this.")
+
     await c.update(**course_data.dict())
     return _create_coursedict(c, user)
 
