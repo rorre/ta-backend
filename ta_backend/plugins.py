@@ -16,4 +16,4 @@ manager = LoginManager(
 
 @manager.user_loader()  # type: ignore
 async def get_user(identifier):
-    return await User.objects.get_or_none(**identifier)
+    return await User.objects.select_related("courses_taken").get_or_none(**identifier)

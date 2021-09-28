@@ -44,7 +44,7 @@ def _create_coursedict(course: Course, user: User):
         "teacher_npm": course.teacher.npm,
         "students_limit": course.students_limit,
         "students_count": len(course.students),
-        "is_enrolled": course.id in user.courses_taken,
+        "is_enrolled": course in user.courses_taken,
     }
 
 
@@ -109,7 +109,7 @@ async def course_create(course: CourseCreate, user: User = Depends(manager)):
 
 @router.post("/{course_id}/enroll", response_model=DefaultResponse)
 async def course_enroll(course_id: UUID, user: User = Depends(manager)):
-    c = await Course.objects.get_or_none(id=course_id)
+    c = await Course.objects.select_related("teacher").get_or_none(id=course_id)
     if not c:
         raise HTTPException(status_code=404, detail="Course not found!")
     if c.teacher == user:
@@ -119,10 +119,10 @@ async def course_enroll(course_id: UUID, user: User = Depends(manager)):
 
     # Reset tzinfo to None again because c.datetime is not timezone aware
     # for no reason
-    current_time = _current_dt_aware().replace(tzinfo=None)
+    current_time = _current_dt_aware().replace(tzinfo=pytz.utc)
     if current_time > c.datetime:
         raise HTTPException(status_code=403, detail="Course has already started!")
-    if len(c.students) >= c.students_limit:
+    if c.students_limit and len(c.students) >= c.students_limit:
         raise HTTPException(status_code=403, detail="Course is already full.")
 
     await c.students.add(user)
@@ -131,7 +131,7 @@ async def course_enroll(course_id: UUID, user: User = Depends(manager)):
 
 @router.post("/{course_id}/unenroll", response_model=DefaultResponse)
 async def course_unenroll(course_id: UUID, user: User = Depends(manager)):
-    c = await Course.objects.get_or_none(id=course_id)
+    c = await Course.objects.select_all().get_or_none(id=course_id)
     if not c:
         raise HTTPException(status_code=404, detail="Course not found!")
     if c.teacher == user:
@@ -149,7 +149,7 @@ async def course_unenroll(course_id: UUID, user: User = Depends(manager)):
 
 @router.get("/{course_id}/detail", response_model=CourseDetailReponse)
 async def course_detail(course_id: UUID, user: User = Depends(manager)):
-    c = await Course.objects.select_related("teacher").get_or_none(id=course_id)
+    c = await Course.objects.select_all().get_or_none(id=course_id)
     if not c:
         raise HTTPException(status_code=404, detail="Course not found!")
     if not (user in c.students or user == c.teacher):
