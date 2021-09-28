@@ -2,12 +2,15 @@ import typing as t
 from datetime import datetime
 from uuid import UUID
 
+import pytz
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from ta_backend.models import Course, Subject, User
 from ta_backend.plugins import manager
 from ta_backend.responses import CourseDetailReponse, CourseResponse, DefaultResponse
+
+jkt_timezone = pytz.timezone("Asia/Jakarta")
 
 
 class CourseCreate(BaseModel):
@@ -18,8 +21,17 @@ class CourseCreate(BaseModel):
     notes: t.Optional[str] = ""
     link: t.Optional[str] = ""
 
+    def __init__(self, *args, **kwargs):
+        dt_str = kwargs.pop("datetime")
+        kwargs["datetime"] = datetime.fromisoformat(dt_str).astimezone(tz=jkt_timezone)
+        super().__init__(*args, **kwargs)
+
 
 router = APIRouter(prefix="/course", dependencies=[Depends(manager)])
+
+
+def _current_dt_aware():
+    return datetime.utcnow().replace(tzinfo=pytz.utc).astimezone(jkt_timezone)
 
 
 def _create_coursedict(course: Course, user: User):
@@ -47,7 +59,7 @@ async def courses_list(user: User = Depends(manager), page: int = Query(1)):
 
 @router.get("/available", response_model=t.List[CourseResponse])
 async def courses_available(user: User = Depends(manager), page: int = Query(1)):
-    current_time = datetime.utcnow()
+    current_time = _current_dt_aware()
     courses = (
         await Course.objects.filter(Course.datetime > current_time)
         .paginate(page, 20)
@@ -91,7 +103,9 @@ async def course_enroll(course_id: UUID, user: User = Depends(manager)):
             status_code=403, detail="You cannot enroll to your own course."
         )
 
-    current_time = datetime.utcnow()
+    # Reset tzinfo to None again because c.datetime is not timezone aware
+    # for no reason
+    current_time = _current_dt_aware().replace(tzinfo=None)
     if current_time > c.datetime:
         raise HTTPException(status_code=403, detail="Course has already started!")
     if len(c.students) >= c.students_limit:
