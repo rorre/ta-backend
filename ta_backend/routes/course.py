@@ -131,6 +131,10 @@ async def course_unenroll(course_id: UUID, user: User = Depends(manager)):
         raise HTTPException(
             status_code=403, detail="You cannot unenroll to your own course."
         )
+    if user not in c.students:
+        raise HTTPException(
+            status_code=401, detail="You are not enrolled to this course."
+        )
 
     await c.students.remove(user)
     return {"message": "Unenrolled from course."}
