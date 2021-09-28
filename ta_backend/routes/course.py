@@ -39,7 +39,9 @@ def _create_coursedict(course: Course, user: User):
         "id": str(course.id),
         "name": course.name,
         "matkul": Subject(course.matkul).name,
-        "datetime": course.datetime,
+        "datetime": course.datetime.astimezone(jkt_timezone).strftime(
+            "%Y-%m-%dT%H:%M:%S"
+        ),
         "teacher": course.teacher.name,
         "teacher_npm": course.teacher.npm,
         "students_limit": course.students_limit,
