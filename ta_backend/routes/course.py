@@ -1,5 +1,5 @@
 import typing as t
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from uuid import UUID
 
 import pytz
@@ -10,7 +10,7 @@ from ta_backend.models import Course, Subject, User
 from ta_backend.plugins import manager
 from ta_backend.responses import CourseDetailReponse, CourseResponse, DefaultResponse
 
-jkt_timezone = pytz.timezone("Asia/Jakarta")
+jkt_timezone = timezone(timedelta(hours=7))
 
 
 class CourseCreate(BaseModel):
@@ -23,7 +23,7 @@ class CourseCreate(BaseModel):
 
     def __init__(self, *args, **kwargs):
         dt_str = kwargs.pop("datetime")
-        kwargs["datetime"] = datetime.fromisoformat(dt_str).astimezone(tz=jkt_timezone)
+        kwargs["datetime"] = datetime.fromisoformat(dt_str).replace(tzinfo=jkt_timezone)
         super().__init__(*args, **kwargs)
 
 
@@ -53,10 +53,7 @@ def _create_coursedict(course: Course, user: User):
 @router.get("/list", response_model=t.List[CourseResponse])
 async def courses_list(user: User = Depends(manager), page: int = Query(1)):
     courses = (
-        await Course.objects.paginate(page, 10)
-        .order_by("-datetime")
-        .select_related("teacher")
-        .all()
+        await Course.objects.paginate(page, 10).order_by("-datetime").select_all().all()
     )
     response = []
     for c in courses:
@@ -66,12 +63,12 @@ async def courses_list(user: User = Depends(manager), page: int = Query(1)):
 
 @router.get("/available", response_model=t.List[CourseResponse])
 async def courses_available(user: User = Depends(manager), page: int = Query(1)):
-    current_time = _current_dt_aware().replace(tzinfo=None)
+    current_time = _current_dt_aware()
     courses = (
         await Course.objects.filter(Course.datetime >= current_time)
         .paginate(page, 10)
         .order_by("-datetime")
-        .select_related("teacher")
+        .select_all()
         .all()
     )
     response = []
@@ -86,7 +83,7 @@ async def courses_mine(user: User = Depends(manager), page: int = Query(1)):
         await Course.objects.filter(Course.teacher.npm == user.npm)
         .paginate(page, 10)
         .order_by("-datetime")
-        .select_related("teacher")
+        .select_all()
         .all()
     )
     response = []
@@ -98,7 +95,7 @@ async def courses_mine(user: User = Depends(manager), page: int = Query(1)):
 @router.get("/enrolled", response_model=t.List[CourseResponse])
 async def courses_enrolled(user: User = Depends(manager), page: int = Query(1)):
     courses = (
-        await user.courses_taken.select_related("teacher")
+        await user.courses_taken.select_all()
         .paginate(page, 10)
         .order_by("-datetime")
         .all()
