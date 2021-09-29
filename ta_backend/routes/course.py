@@ -124,7 +124,7 @@ async def course_create(course: CourseCreate, user: User = Depends(manager)):
 
 @router.post("/{course_id}/enroll", response_model=DefaultResponse)
 async def course_enroll(course_id: UUID, user: User = Depends(manager)):
-    c = await Course.objects.select_related("teacher").get_or_none(id=course_id)
+    c = await Course.objects.select_all().get_or_none(id=course_id)
     if not c:
         raise HTTPException(status_code=404, detail="Course not found!")
     if c.teacher == user:
