@@ -115,6 +115,8 @@ async def course_create(course: CourseCreate, user: User = Depends(manager)):
             detail="You cannot pick date and time that happens in the past.",
         )
 
+    if course.students_limit and course.students_limit <= 0:
+        course.students_limit = None
     c = await Course.objects.create(**course.dict())
     await c.update(teacher=user)
     return _create_coursedict(c, user)
@@ -199,6 +201,8 @@ async def course_update(
     if user != c.teacher:
         raise HTTPException(status_code=401, detail="You are not allowed to do this.")
 
+    if course_data.students_limit and course_data.students_limit <= 0:
+        course_data.students_limit = None
     await c.update(**course_data.dict())
     return _create_coursedict(c, user)
 
