@@ -95,6 +95,20 @@ async def courses_mine(user: User = Depends(manager), page: int = Query(1)):
     return response
 
 
+@router.get("/enrolled", response_model=t.List[CourseResponse])
+async def courses_enrolled(user: User = Depends(manager), page: int = Query(1)):
+    courses = (
+        await user.courses_taken.select_related("teacher")
+        .paginate(page, 10)
+        .order_by("-datetime")
+        .all()
+    )
+    response = []
+    for c in courses:
+        response.append(_create_coursedict(c, user))
+    return response
+
+
 @router.post("/create", response_model=CourseResponse)
 async def course_create(course: CourseCreate, user: User = Depends(manager)):
     current_time = _current_dt_aware()
