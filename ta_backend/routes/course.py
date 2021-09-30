@@ -31,7 +31,6 @@ class CourseCreate(BaseModel):
 router = APIRouter(
     prefix="/course",
     dependencies=[
-        Depends(RateLimiter(times=300, seconds=60)),
         Depends(manager),
     ],
 )
@@ -148,7 +147,7 @@ async def course_create(course: CourseCreate, user: User = Depends(manager)):
     "/{course_id}/enroll",
     response_model=DefaultResponse,
     dependencies=[
-        Depends(RateLimiter(times=1, seconds=2)),
+        Depends(RateLimiter(times=1, seconds=1)),
     ],
 )
 async def course_enroll(course_id: UUID, user: User = Depends(manager)):
@@ -176,7 +175,7 @@ async def course_enroll(course_id: UUID, user: User = Depends(manager)):
     "/{course_id}/unenroll",
     response_model=DefaultResponse,
     dependencies=[
-        Depends(RateLimiter(times=1, seconds=2)),
+        Depends(RateLimiter(times=1, seconds=1)),
     ],
 )
 async def course_unenroll(course_id: UUID, user: User = Depends(manager)):
