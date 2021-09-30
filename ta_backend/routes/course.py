@@ -115,6 +115,14 @@ async def course_create(course: CourseCreate, user: User = Depends(manager)):
             detail="You cannot pick date and time that happens in the past.",
         )
 
+    upcoming_user_courses = await Course.objects.filter(
+        (Course.datetime > current_time) & (Course.teacher.npm == user.npm)
+    ).all()
+    if len(upcoming_user_courses) >= 2:
+        raise HTTPException(
+            status_code=400, detail="You can only have at most 2 upcoming classes."
+        )
+
     if course.students_limit and course.students_limit <= 0:
         course.students_limit = None
     c = await Course.objects.create(**course.dict())
