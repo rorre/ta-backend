@@ -4,6 +4,7 @@ from uuid import UUID
 
 import pytz
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi_limiter.depends import RateLimiter
 from pydantic import BaseModel
 
 from ta_backend.models import Course, Subject, User
@@ -27,7 +28,13 @@ class CourseCreate(BaseModel):
         super().__init__(*args, **kwargs)
 
 
-router = APIRouter(prefix="/course", dependencies=[Depends(manager)])
+router = APIRouter(
+    prefix="/course",
+    dependencies=[
+        Depends(RateLimiter(times=300, seconds=60)),
+        Depends(manager),
+    ],
+)
 
 
 def _current_dt_aware():
@@ -106,7 +113,14 @@ async def courses_enrolled(user: User = Depends(manager), page: int = Query(1)):
     return response
 
 
-@router.post("/create", response_model=CourseResponse)
+@router.post(
+    "/create",
+    response_model=CourseResponse,
+    dependencies=[
+        Depends(RateLimiter(times=1, seconds=10)),
+        Depends(RateLimiter(times=2, seconds=60)),
+    ],
+)
 async def course_create(course: CourseCreate, user: User = Depends(manager)):
     current_time = _current_dt_aware()
     if course.datetime < current_time:
@@ -130,7 +144,13 @@ async def course_create(course: CourseCreate, user: User = Depends(manager)):
     return _create_coursedict(c, user)
 
 
-@router.post("/{course_id}/enroll", response_model=DefaultResponse)
+@router.post(
+    "/{course_id}/enroll",
+    response_model=DefaultResponse,
+    dependencies=[
+        Depends(RateLimiter(times=1, seconds=2)),
+    ],
+)
 async def course_enroll(course_id: UUID, user: User = Depends(manager)):
     c = await Course.objects.select_all().get_or_none(id=course_id)
     if not c:
@@ -152,7 +172,13 @@ async def course_enroll(course_id: UUID, user: User = Depends(manager)):
     return {"message": "Successfully enrolled!"}
 
 
-@router.post("/{course_id}/unenroll", response_model=DefaultResponse)
+@router.post(
+    "/{course_id}/unenroll",
+    response_model=DefaultResponse,
+    dependencies=[
+        Depends(RateLimiter(times=1, seconds=2)),
+    ],
+)
 async def course_unenroll(course_id: UUID, user: User = Depends(manager)):
     c = await Course.objects.select_all().get_or_none(id=course_id)
     if not c:
@@ -190,7 +216,13 @@ async def course_detail(course_id: UUID, user: User = Depends(manager)):
     return course_dict
 
 
-@router.post("/{course_id}/update", response_model=CourseDetailReponse)
+@router.post(
+    "/{course_id}/update",
+    response_model=CourseDetailReponse,
+    dependencies=[
+        Depends(RateLimiter(times=1, seconds=10)),
+    ],
+)
 async def course_update(
     course_id: UUID,
     course_data: CourseCreate,
@@ -215,7 +247,13 @@ async def course_update(
     return _create_coursedict(c, user)
 
 
-@router.delete("/{course_id}/delete", response_model=DefaultResponse)
+@router.delete(
+    "/{course_id}/delete",
+    response_model=DefaultResponse,
+    dependencies=[
+        Depends(RateLimiter(times=1, seconds=10)),
+    ],
+)
 async def course_delete(course_id: UUID, user: User = Depends(manager)):
     c = await Course.objects.select_related("teacher").get_or_none(id=course_id)
     if not c:

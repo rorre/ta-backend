@@ -1,6 +1,9 @@
+import aioredis
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi_limiter import FastAPILimiter
 
+from ta_backend.helper.settings import settings
 from ta_backend.helper.database import database
 from ta_backend.models import User
 from ta_backend.plugins import manager
@@ -43,6 +46,10 @@ async def me(user: User = Depends(manager)):
 async def on_startup():
     if not database.is_connected:
         await database.connect()
+    redis = await aioredis.from_url(
+        settings.redis_url, encoding="utf-8", decode_responses=True
+    )
+    await FastAPILimiter.init(redis)
 
 
 @app.on_event("shutdown")
