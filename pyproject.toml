@@ -5,7 +5,7 @@ description = ""
 authors = ["Rendy Arya Kemal <rendyarya22@gmail.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.8"
 ormar = "^0.10.19"
 fastapi = {extras = ["all"], version = "^0.68.1"}
 fastapi-login = "^1.7.2"
