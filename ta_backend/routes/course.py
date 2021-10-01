@@ -52,7 +52,7 @@ def _create_coursedict(course: Course, user: User):
         "teacher_npm": course.teacher.npm,
         "students_limit": course.students_limit,
         "students_count": len(course.students),
-        "is_enrolled": course in user.courses_taken,
+        "is_enrolled": course in user.courses_taken,  # type: ignore
     }
 
 
@@ -239,6 +239,14 @@ async def course_update(
         raise HTTPException(status_code=404, detail="Course not found!")
     if user != c.teacher:
         raise HTTPException(status_code=401, detail="You are not allowed to do this.")
+
+    upcoming_user_courses = await Course.objects.filter(
+        (Course.datetime > current_time) & (Course.teacher.npm == user.npm)
+    ).all()
+    if len(upcoming_user_courses) >= 2:
+        raise HTTPException(
+            status_code=400, detail="You can only have at most 2 upcoming classes."
+        )
 
     if course_data.students_limit and course_data.students_limit <= 0:
         course_data.students_limit = None
