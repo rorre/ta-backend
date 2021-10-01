@@ -1,8 +1,10 @@
+from typing import TYPE_CHECKING
 import uuid
 from datetime import datetime as dt
 from enum import Enum
 
 import ormar
+from ormar.relations.querysetproxy import QuerysetProxy
 
 from ta_backend.helper.database import BaseMeta
 
@@ -24,7 +26,9 @@ class User(ormar.Model):
     npm: int = ormar.Integer(primary_key=True)
     username: str = ormar.String(max_length=128)
     name: str = ormar.String(max_length=256, nullable=True)
-    # courses: t.Optional[t.List[Course]]
+    if TYPE_CHECKING:
+        courses_taken: QuerysetProxy["Course"]
+        courses_owned: QuerysetProxy["Course"]
 
 
 class Course(ormar.Model):
