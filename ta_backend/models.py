@@ -1,10 +1,17 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Generic
 import uuid
 from datetime import datetime as dt
 from enum import Enum
 
 import ormar
-from ormar.relations.querysetproxy import QuerysetProxy
+
+if TYPE_CHECKING:
+    from ormar.models import T
+    from ormar.relations.querysetproxy import QuerysetProxy as _QSP
+
+    class QuerysetProxy(Generic[T], _QSP, list):  # type: ignore
+        ...
+
 
 from ta_backend.helper.database import BaseMeta
 
