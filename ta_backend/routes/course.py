@@ -52,7 +52,8 @@ def _create_coursedict(course: Course, user: User):
         "teacher_npm": course.teacher.npm,
         "students_limit": course.students_limit,
         "students_count": len(course.students),
-        "is_enrolled": course in user.courses_taken,  # type: ignore
+        "is_enrolled": course in user.courses_taken,
+        "students": [s.name for s in course.students],
     }
 
 

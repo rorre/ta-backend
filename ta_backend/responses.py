@@ -23,3 +23,4 @@ class CourseResponse(BaseModel):
 class CourseDetailReponse(CourseResponse):
     link: t.Optional[str]
     notes: t.Optional[str]
+    students: t.List[str]
