@@ -54,6 +54,8 @@ def _create_coursedict(course: Course, user: User):
         "students_count": len(course.students),
         "is_enrolled": course in user.courses_taken,
         "students": [s.name for s in course.students],
+        "link": course.link,
+        "notes": course.notes,
     }
 
 
@@ -127,6 +129,11 @@ async def course_create(course: CourseCreate, user: User = Depends(manager)):
         raise HTTPException(
             status_code=400,
             detail="You cannot pick date and time that happens in the past.",
+        )
+    elif (course.datetime - current_time) > timedelta(days=28):
+        raise HTTPException(
+            status_code=400,
+            detail="Date and Time must be between now and 30 days from now.",
         )
 
     upcoming_user_courses = await Course.objects.filter(
@@ -207,12 +214,6 @@ async def course_detail(course_id: UUID, user: User = Depends(manager)):
         )
 
     course_dict = _create_coursedict(c, user)
-    course_dict.update(
-        {
-            "link": c.link,
-            "notes": c.notes,
-        }
-    )
     return course_dict
 
 
@@ -234,6 +235,11 @@ async def course_update(
             status_code=400,
             detail="You cannot pick date and time that happens in the past.",
         )
+    elif (course_data.datetime - current_time) > timedelta(days=28):
+        raise HTTPException(
+            status_code=400,
+            detail="Date and Time must be between now and 30 days from now.",
+        )
 
     c = await Course.objects.select_related("teacher").get_or_none(id=course_id)
     if not c:
@@ -241,13 +247,9 @@ async def course_update(
     if user != c.teacher:
         raise HTTPException(status_code=401, detail="You are not allowed to do this.")
 
-    upcoming_user_courses = await Course.objects.filter(
-        (Course.datetime > current_time) & (Course.teacher.npm == user.npm)
-    ).all()
-    if len(upcoming_user_courses) >= 2:
-        raise HTTPException(
-            status_code=400, detail="You can only have at most 2 upcoming classes."
-        )
+    time_utc = current_time.replace(tzinfo=pytz.utc)
+    if c.datetime < time_utc:
+        raise HTTPException(status_code=400, detail="You cannot reopen a class.")
 
     if course_data.students_limit and course_data.students_limit <= 0:
         course_data.students_limit = None
