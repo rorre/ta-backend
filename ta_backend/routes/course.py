@@ -21,6 +21,8 @@ class CourseCreate(BaseModel):
     students_limit: t.Optional[int] = None
     notes: t.Optional[str] = ""
     link: t.Optional[str] = ""
+    notes_short: t.Optional[str] = ""
+    hidden: bool
 
     def __init__(self, *args, **kwargs):
         dt_str = kwargs.pop("datetime")
@@ -41,22 +43,22 @@ def _current_dt_aware():
 
 
 def _create_coursedict(course: Course, user: User):
-    return {
-        "id": str(course.id),
-        "name": course.name,
-        "matkul": Subject(course.matkul).name,
-        "datetime": course.datetime.astimezone(jkt_timezone).strftime(
-            "%Y-%m-%dT%H:%M:%S"
-        ),
-        "teacher": course.teacher.name,
-        "teacher_npm": course.teacher.npm,
-        "students_limit": course.students_limit,
-        "students_count": len(course.students),
-        "is_enrolled": course in user.courses_taken,
-        "students": [s.name for s in course.students],
-        "link": course.link,
-        "notes": course.notes,
-    }
+    response = course.dict(exclude={"datetime", "matkul", "teacher", "students"})
+    response.update(
+        {
+            "id": str(course.id),
+            "matkul": Subject(course.matkul).name,
+            "datetime": course.datetime.astimezone(jkt_timezone).strftime(
+                "%Y-%m-%dT%H:%M:%S"
+            ),
+            "teacher": course.teacher.name,
+            "teacher_npm": course.teacher.npm,
+            "students_count": len(course.students),
+            "is_enrolled": course in user.courses_taken,
+            "students": [s.name for s in course.students],
+        }
+    )
+    return response
 
 
 @router.get("/list", response_model=t.List[CourseResponse])
@@ -74,7 +76,9 @@ async def courses_list(user: User = Depends(manager), page: int = Query(1)):
 async def courses_available(user: User = Depends(manager), page: int = Query(1)):
     current_time = _current_dt_aware()
     courses = (
-        await Course.objects.filter(Course.datetime >= current_time)
+        await Course.objects.filter(
+            (Course.datetime >= current_time) & (Course.hidden == False)  # noqa
+        )
         .paginate(page, 10)
         .order_by("-datetime")
         .select_all()

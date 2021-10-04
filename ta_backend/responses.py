@@ -18,6 +18,8 @@ class CourseResponse(BaseModel):
     students_count: int
     students_limit: t.Optional[int]
     is_enrolled: bool
+    notes_short: t.Optional[str]
+    hidden: bool
 
 
 class CourseDetailReponse(CourseResponse):
