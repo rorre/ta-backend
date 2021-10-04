@@ -33,6 +33,8 @@ class User(ormar.Model):
     npm: int = ormar.Integer(primary_key=True)
     username: str = ormar.String(max_length=128)
     name: str = ormar.String(max_length=256, nullable=True)
+    is_admin: bool = ormar.Boolean(default=False)
+
     if TYPE_CHECKING:
         courses_taken: QuerysetProxy["Course"]
         courses_owned: QuerysetProxy["Course"]

@@ -54,7 +54,7 @@ def _create_coursedict(course: Course, user: User):
             "teacher": course.teacher.name,
             "teacher_npm": course.teacher.npm,
             "students_count": len(course.students),
-            "is_enrolled": course in user.courses_taken,
+            "is_enrolled": course in user.courses_taken or user.is_admin,
             "students": [s.name for s in course.students],
         }
     )
@@ -75,10 +75,14 @@ async def courses_list(user: User = Depends(manager), page: int = Query(1)):
 @router.get("/available", response_model=t.List[CourseResponse])
 async def courses_available(user: User = Depends(manager), page: int = Query(1)):
     current_time = _current_dt_aware()
+
+    # Let admin see hidden courses
+    filters = Course.datetime >= current_time
+    if not user.is_admin:
+        filters &= Course.hidden == False  # noqa
+
     courses = (
-        await Course.objects.filter(
-            (Course.datetime >= current_time) & (Course.hidden == False)  # noqa
-        )
+        await Course.objects.filter(filters)
         .paginate(page, 10)
         .order_by("-datetime")
         .select_all()
@@ -212,7 +216,7 @@ async def course_detail(course_id: UUID, user: User = Depends(manager)):
     c = await Course.objects.select_all().get_or_none(id=course_id)
     if not c:
         raise HTTPException(status_code=404, detail="Course not found!")
-    if not (user in c.students or user == c.teacher):
+    if not (user in c.students or user == c.teacher or user.is_admin):
         raise HTTPException(
             status_code=401, detail="You are not enrolled to this course."
         )
@@ -248,7 +252,7 @@ async def course_update(
     c = await Course.objects.select_related("teacher").get_or_none(id=course_id)
     if not c:
         raise HTTPException(status_code=404, detail="Course not found!")
-    if user != c.teacher:
+    if user != c.teacher and not user.is_admin:
         raise HTTPException(status_code=401, detail="You are not allowed to do this.")
 
     time_utc = current_time.replace(tzinfo=pytz.utc)
@@ -272,7 +276,7 @@ async def course_delete(course_id: UUID, user: User = Depends(manager)):
     c = await Course.objects.select_related("teacher").get_or_none(id=course_id)
     if not c:
         raise HTTPException(status_code=404, detail="Course not found!")
-    if user != c.teacher:
+    if user != c.teacher and not user.is_admin:
         raise HTTPException(status_code=401, detail="You are not allowed to do this.")
     await c.delete()
     return {"message": "Course deleted."}
