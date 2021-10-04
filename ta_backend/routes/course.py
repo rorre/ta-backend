@@ -255,8 +255,7 @@ async def course_update(
     if user != c.teacher and not user.is_admin:
         raise HTTPException(status_code=401, detail="You are not allowed to do this.")
 
-    time_utc = current_time.replace(tzinfo=pytz.utc)
-    if c.datetime < time_utc:
+    if c.datetime < current_time:
         raise HTTPException(status_code=400, detail="You cannot reopen a class.")
 
     if course_data.students_limit and course_data.students_limit <= 0:
