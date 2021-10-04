@@ -1,7 +1,7 @@
-from typing import TYPE_CHECKING, Generic
 import uuid
 from datetime import datetime as dt
 from enum import Enum
+from typing import TYPE_CHECKING, Generic
 
 import ormar
 

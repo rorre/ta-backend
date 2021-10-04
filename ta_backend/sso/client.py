@@ -6,11 +6,7 @@ import urllib.parse
 import httpx
 import xmltodict
 
-from ta_backend.sso.types import (
-    KDAttributes,
-    Response,
-    User,
-)
+from ta_backend.sso.types import KDAttributes, Response, User
 
 path = os.path.dirname(os.path.abspath(__file__))
 filename = os.path.join(path, "additional-info.json")

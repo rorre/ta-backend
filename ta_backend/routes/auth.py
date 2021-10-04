@@ -1,6 +1,6 @@
 from black import traceback
-from fastapi import APIRouter, Depends, Query, HTTPException
-from fastapi.responses import JSONResponse, RedirectResponse, HTMLResponse
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
 from ta_backend.helper.settings import settings
 from ta_backend.models import User

@@ -3,8 +3,8 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_limiter import FastAPILimiter
 
-from ta_backend.helper.settings import settings
 from ta_backend.helper.database import database
+from ta_backend.helper.settings import settings
 from ta_backend.models import User
 from ta_backend.plugins import manager
 from ta_backend.responses import DefaultResponse
