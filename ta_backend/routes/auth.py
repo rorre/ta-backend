@@ -1,5 +1,5 @@
 from black import traceback
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from fastapi.responses import JSONResponse, RedirectResponse, HTMLResponse
 
 from ta_backend.helper.settings import settings
@@ -23,6 +23,13 @@ async def callback(ticket: str = Query(...)):
     except Exception:
         traceback.print_exc()
         return {"err": "An error has occured."}
+
+    kd = sso_response["attributes"]["kd_attributes"]
+    if kd and kd["faculty"] != "ILMU KOMPUTER":
+        raise HTTPException(
+            status_code=401,
+            detail="This service is only available for Faculty of Computer Science students.",
+        )
 
     user = await User.objects.get_or_create(
         npm=sso_response["attributes"]["npm"],
