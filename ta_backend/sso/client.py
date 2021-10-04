@@ -6,43 +6,17 @@ import urllib.parse
 import httpx
 import xmltodict
 
+from ta_backend.sso.types import (
+    KDAttributes,
+    Response,
+    User,
+)
+
 path = os.path.dirname(os.path.abspath(__file__))
 filename = os.path.join(path, "additional-info.json")
 
 with open(filename, "r") as f:
-    additional_datas: t.Dict = json.load(f)
-
-
-class Attributes(t.TypedDict):
-    ldap_cn: str
-    kd_org: str
-    peran_user: str
-    nama: str
-    npm: str
-
-
-class SuccessResponse(t.TypedDict):
-    user: str
-    attributes: Attributes
-
-
-FailureResponse = t.TypedDict(
-    "FailureResponse",
-    {
-        "@code": str,
-        "#text": str,
-    },
-)
-
-
-class Response(t.TypedDict, total=False):
-    authenticationSuccess: SuccessResponse
-    authenticationFailure: FailureResponse
-
-
-class User(t.TypedDict):
-    username: str
-    attributes: Attributes
+    additional_datas: t.Dict[str, KDAttributes] = json.load(f)
 
 
 def _normalize_keys(resp: t.Dict):
@@ -83,9 +57,10 @@ class UIClient:
         normalized: Response = _normalize_keys(output["cas:serviceResponse"])
         if "authenticationSuccess" in normalized:
             user = normalized["authenticationSuccess"]
-            user["attributes"].update(
-                additional_datas.get(user["attributes"]["kd_org"], {})
+            user["attributes"]["kd_attributes"] = additional_datas.get(
+                user["attributes"]["kd_org"]
             )
+
             return {
                 "username": user["user"],
                 "attributes": user["attributes"],
