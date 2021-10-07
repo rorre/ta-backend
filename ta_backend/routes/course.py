@@ -1,7 +1,8 @@
 import typing as t
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
-
+import urllib.parse
+import re
 import pytz
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi_limiter.depends import RateLimiter
@@ -36,6 +37,19 @@ router = APIRouter(
         Depends(manager),
     ],
 )
+
+
+def _is_invite_url(url: str) -> bool:
+    ZOOM_RE = re.compile(r"\/j\/\d+")
+    GMEET_RE = re.compile(r"\/\w{3}-\w{4}-\w{3}")
+
+    parsed = urllib.parse.urlparse(url)
+    if parsed.netloc == "zoom.us":
+        return bool(ZOOM_RE.search(parsed.path))
+    elif parsed.netloc == "meet.google.com":
+        return bool(GMEET_RE.search(parsed.path))
+
+    return False
 
 
 def _current_dt_aware():
@@ -144,6 +158,9 @@ async def course_create(course: CourseCreate, user: User = Depends(manager)):
             detail="Date and Time must be between now and 30 days from now.",
         )
 
+    if course.link and not _is_invite_url(course.link):
+        raise HTTPException(status_code=400, detail="Invalid Meet/Zoom URL.")
+
     upcoming_user_courses = await Course.objects.filter(
         (Course.datetime > current_time) & (Course.teacher.npm == user.npm)
     ).all()
@@ -248,6 +265,9 @@ async def course_update(
             status_code=400,
             detail="Date and Time must be between now and 30 days from now.",
         )
+
+    if course_data.link and not _is_invite_url(course_data.link):
+        raise HTTPException(status_code=400, detail="Invalid Meet/Zoom URL.")
 
     c = await Course.objects.select_related("teacher").get_or_none(id=course_id)
     if not c:
