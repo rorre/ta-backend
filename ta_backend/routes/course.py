@@ -1,8 +1,9 @@
+import re
 import typing as t
+import urllib.parse
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
-import urllib.parse
-import re
+
 import pytz
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi_limiter.depends import RateLimiter
