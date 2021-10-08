@@ -142,7 +142,7 @@ async def courses_enrolled(user: User = Depends(manager), page: int = Query(1)):
     "/create",
     response_model=CourseResponse,
     dependencies=[
-        Depends(RateLimiter(times=1, seconds=2.5)),
+        Depends(RateLimiter(times=1, seconds=3)),
     ],
 )
 async def course_create(course: CourseCreate, user: User = Depends(manager)):
@@ -246,7 +246,7 @@ async def course_detail(course_id: UUID, user: User = Depends(manager)):
     "/{course_id}/update",
     response_model=CourseDetailReponse,
     dependencies=[
-        Depends(RateLimiter(times=1, seconds=2.5)),
+        Depends(RateLimiter(times=1, seconds=3)),
     ],
 )
 async def course_update(
