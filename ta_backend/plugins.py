@@ -1,3 +1,4 @@
+import aioredis
 from datetime import timedelta
 
 from fastapi_login import LoginManager
@@ -12,6 +13,7 @@ manager = LoginManager(
     use_header=False,
     default_expiry=timedelta(hours=24),
 )
+redis = aioredis.from_url(settings.redis_url, encoding="utf-8", decode_responses=True)
 
 
 @manager.user_loader()  # type: ignore

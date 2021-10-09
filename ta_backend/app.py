@@ -1,4 +1,3 @@
-import aioredis
 import sentry_sdk
 from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
 from fastapi import Depends, FastAPI
@@ -8,7 +7,7 @@ from fastapi_limiter import FastAPILimiter
 from ta_backend.helper.database import database
 from ta_backend.helper.settings import settings
 from ta_backend.models import User
-from ta_backend.plugins import manager
+from ta_backend.plugins import manager, redis
 from ta_backend.responses import DefaultResponse
 from ta_backend.routes.auth import router as AuthRouter
 from ta_backend.routes.course import router as CourseRouter
@@ -52,9 +51,7 @@ async def me(user: User = Depends(manager)):
 async def on_startup():
     if not database.is_connected:
         await database.connect()
-    redis = await aioredis.from_url(
-        settings.redis_url, encoding="utf-8", decode_responses=True
-    )
+
     await FastAPILimiter.init(redis)
 
 

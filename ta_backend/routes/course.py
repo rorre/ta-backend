@@ -4,13 +4,14 @@ import urllib.parse
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
+import ujson
 import pytz
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi_limiter.depends import RateLimiter
 from pydantic import BaseModel
 
 from ta_backend.models import Course, Subject, User
-from ta_backend.plugins import manager
+from ta_backend.plugins import manager, redis
 from ta_backend.responses import CourseDetailReponse, CourseResponse, DefaultResponse
 
 jkt_timezone = timezone(timedelta(hours=7))
@@ -184,6 +185,8 @@ async def course_create(course: CourseCreate, user: User = Depends(manager)):
     ],
 )
 async def course_enroll(course_id: UUID, user: User = Depends(manager)):
+    redis_key = f"{str(course_id)}--detail"
+
     c = await Course.objects.select_all().get_or_none(id=course_id)
     if not c:
         raise HTTPException(status_code=404, detail="Course not found!")
@@ -201,6 +204,7 @@ async def course_enroll(course_id: UUID, user: User = Depends(manager)):
         raise HTTPException(status_code=403, detail="Course is already full.")
 
     await c.students.add(user)
+    await redis.delete(redis_key)
     return {"message": "Successfully enrolled!"}
 
 
@@ -212,6 +216,8 @@ async def course_enroll(course_id: UUID, user: User = Depends(manager)):
     ],
 )
 async def course_unenroll(course_id: UUID, user: User = Depends(manager)):
+    redis_key = f"{str(course_id)}--detail"
+
     c = await Course.objects.select_all().get_or_none(id=course_id)
     if not c:
         raise HTTPException(status_code=404, detail="Course not found!")
@@ -225,11 +231,18 @@ async def course_unenroll(course_id: UUID, user: User = Depends(manager)):
         )
 
     await c.students.remove(user)
+    await redis.delete(redis_key)
     return {"message": "Unenrolled from course."}
 
 
 @router.get("/{course_id}/detail", response_model=CourseDetailReponse)
 async def course_detail(course_id: UUID, user: User = Depends(manager)):
+    redis_key = f"{str(course_id)}--detail"
+
+    course_dict: str = await redis.get(redis_key)
+    if course_dict:
+        return ujson.loads(course_dict)
+
     c = await Course.objects.select_all().get_or_none(id=course_id)
     if not c:
         raise HTTPException(status_code=404, detail="Course not found!")
@@ -239,6 +252,7 @@ async def course_detail(course_id: UUID, user: User = Depends(manager)):
         )
 
     course_dict = _create_coursedict(c, user)
+    await redis.set(redis_key, ujson.dumps(course_dict), ex=60)
     return course_dict
 
 
@@ -254,6 +268,8 @@ async def course_update(
     course_data: CourseCreate,
     user: User = Depends(manager),
 ):
+    redis_key = f"{str(course_id)}--detail"
+
     current_time = _current_dt_aware()
     if course_data.datetime < current_time:
         raise HTTPException(
@@ -281,6 +297,7 @@ async def course_update(
     if course_data.students_limit and course_data.students_limit <= 0:
         course_data.students_limit = None
     await c.update(**course_data.dict())
+    await redis.delete(redis_key)
     return _create_coursedict(c, user)
 
 
@@ -292,10 +309,14 @@ async def course_update(
     ],
 )
 async def course_delete(course_id: UUID, user: User = Depends(manager)):
+    redis_key = f"{str(course_id)}--detail"
+
     c = await Course.objects.select_related("teacher").get_or_none(id=course_id)
     if not c:
         raise HTTPException(status_code=404, detail="Course not found!")
     if user != c.teacher and not user.is_admin:
         raise HTTPException(status_code=401, detail="You are not allowed to do this.")
     await c.delete()
+
+    await redis.delete(redis_key)
     return {"message": "Course deleted."}
