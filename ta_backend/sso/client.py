@@ -8,6 +8,11 @@ import xmltodict
 
 from ta_backend.sso.types import KDAttributes, Response, User
 
+
+class AuthError(Exception):
+    pass
+
+
 path = os.path.dirname(os.path.abspath(__file__))
 filename = os.path.join(path, "additional-info.json")
 
@@ -62,6 +67,6 @@ class UIClient:
                 "attributes": user["attributes"],
             }
         else:
-            raise Exception(
+            raise AuthError(
                 "Error from server: " + normalized["authenticationFailure"]["#text"]
             )

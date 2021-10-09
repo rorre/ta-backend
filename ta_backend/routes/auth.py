@@ -5,7 +5,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from ta_backend.helper.settings import settings
 from ta_backend.models import User
 from ta_backend.plugins import manager
-from ta_backend.sso.client import UIClient
+from ta_backend.sso.client import AuthError, UIClient
 
 router = APIRouter(prefix="/auth")
 client = UIClient(f"http://{settings.hostname}/auth/callback")
@@ -20,6 +20,8 @@ def login():
 async def callback(ticket: str = Query(...)):
     try:
         sso_response = await client.authenticate(ticket)
+    except AuthError:
+        return {"err": "Authentication failure. Please try again."}
     except Exception:
         traceback.print_exc()
         return {"err": "An error has occured."}
