@@ -235,7 +235,11 @@ async def course_unenroll(course_id: UUID, user: User = Depends(manager)):
     return {"message": "Unenrolled from course."}
 
 
-@router.get("/{course_id}/detail", response_model=CourseDetailReponse)
+@router.get(
+    "/{course_id}/detail",
+    response_model=CourseDetailReponse,
+    dependencies=[Depends(RateLimiter(times=20, seconds=1))],
+)
 async def course_detail(course_id: UUID, user: User = Depends(manager)):
     redis_key = f"{str(course_id)}--detail"
 
