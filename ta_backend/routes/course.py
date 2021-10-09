@@ -194,7 +194,7 @@ async def course_enroll(course_id: UUID, user: User = Depends(manager)):
 
     # Reset tzinfo to None again because c.datetime is not timezone aware
     # for no reason
-    current_time = _current_dt_aware().replace(tzinfo=pytz.utc)
+    current_time = _current_dt_aware().replace(tzinfo=pytz.utc) - timedelta(hours=7)
     if current_time > c.datetime:
         raise HTTPException(status_code=403, detail="Course has already started!")
     if c.students_limit and len(c.students) >= c.students_limit:
