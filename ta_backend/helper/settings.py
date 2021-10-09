@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     redis_url: str
     secret: str
     hostname: str
+    sentry_url: str = ""
 
 
 settings = Settings(".env")

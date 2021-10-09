@@ -1,4 +1,6 @@
 import aioredis
+import sentry_sdk
+from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_limiter import FastAPILimiter
@@ -26,6 +28,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+if settings.sentry_url:
+    sentry_sdk.init(settings.sentry_url)
+    app.add_middleware(SentryAsgiMiddleware)
 
 
 @app.get("/", response_model=DefaultResponse)
