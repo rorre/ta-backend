@@ -29,7 +29,11 @@ app.add_middleware(
 )
 
 if settings.sentry_url:
-    sentry_sdk.init(settings.sentry_url)
+    sentry_sdk.init(
+        settings.sentry_url,
+        traces_sample_rate=0.25,
+        sample_rate=0.5,
+    )
     app.add_middleware(SentryAsgiMiddleware)
 
 
