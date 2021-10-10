@@ -293,18 +293,7 @@ async def course_update(
     user: User = Depends(manager),
 ):
     redis_key = f"{str(course_id)}--detail"
-
     current_time = _current_dt_aware()
-    if course_data.datetime < current_time:
-        raise HTTPException(
-            status_code=400,
-            detail="You cannot pick date and time that happens in the past.",
-        )
-    elif (course_data.datetime - current_time) > timedelta(days=28):
-        raise HTTPException(
-            status_code=400,
-            detail="Date and Time must be between now and 30 days from now.",
-        )
 
     if course_data.link and not _is_invite_url(course_data.link):
         raise HTTPException(status_code=400, detail="Invalid Meet/Zoom URL.")
@@ -315,8 +304,21 @@ async def course_update(
     if user != c.teacher and not user.is_admin:
         raise HTTPException(status_code=401, detail="You are not allowed to do this.")
 
-    if c.datetime < current_time:
-        raise HTTPException(status_code=400, detail="You cannot reopen a class.")
+    is_dt_changed = c.datetime != course_data.datetime
+    if is_dt_changed:
+        if c.datetime < course_data.datetime:
+            raise HTTPException(status_code=400, detail="You cannot reopen a class.")
+
+        if course_data.datetime < current_time:
+            raise HTTPException(
+                status_code=400,
+                detail="You cannot pick date and time that happens in the past.",
+            )
+        elif (course_data.datetime - current_time) > timedelta(days=28):
+            raise HTTPException(
+                status_code=400,
+                detail="Date and Time must be between now and 30 days from now.",
+            )
 
     if course_data.students_limit and course_data.students_limit <= 0:
         course_data.students_limit = None
