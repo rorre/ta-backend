@@ -87,7 +87,13 @@ async def _create_coursedict(course: Course, user: User, include_students=False)
     return response
 
 
-@router.get("/list", response_model=t.List[CourseResponse])
+@router.get(
+    "/list",
+    response_model=t.List[CourseResponse],
+    dependencies=[
+        Depends(RateLimiter(times=300, minutes=1)),
+    ],
+)
 async def courses_list(user: User = Depends(manager), page: int = Query(1)):
     courses = (
         await Course.objects.paginate(page, 10)
@@ -123,7 +129,13 @@ async def courses_available(user: User = Depends(manager), page: int = Query(1))
     return response
 
 
-@router.get("/mine", response_model=t.List[CourseResponse])
+@router.get(
+    "/mine",
+    response_model=t.List[CourseResponse],
+    dependencies=[
+        Depends(RateLimiter(times=300, minutes=1)),
+    ],
+)
 async def courses_mine(user: User = Depends(manager), page: int = Query(1)):
     courses = (
         await Course.objects.filter(Course.teacher.npm == user.npm)
@@ -137,7 +149,13 @@ async def courses_mine(user: User = Depends(manager), page: int = Query(1)):
     return response
 
 
-@router.get("/enrolled", response_model=t.List[CourseResponse])
+@router.get(
+    "/enrolled",
+    response_model=t.List[CourseResponse],
+    dependencies=[
+        Depends(RateLimiter(times=300, minutes=1)),
+    ],
+)
 async def courses_enrolled(user: User = Depends(manager), page: int = Query(1)):
     courses = (
         await user.courses_taken.select_related("teacher")
