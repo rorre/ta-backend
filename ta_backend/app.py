@@ -8,7 +8,7 @@ from ta_backend.helper.database import database
 from ta_backend.helper.settings import settings
 from ta_backend.models import User
 from ta_backend.plugins import manager, redis
-from ta_backend.responses import DefaultResponse
+from ta_backend.responses import DefaultResponse, UserResponse
 from ta_backend.routes.auth import router as AuthRouter
 from ta_backend.routes.course import router as CourseRouter
 
@@ -42,11 +42,7 @@ async def root():
     return {"message": "Hello world!"}
 
 
-@app.get(
-    "/me",
-    response_model=User,
-    response_model_exclude={"courses_owned", "courses_taken"},
-)
+@app.get("/me", response_model=UserResponse)
 async def me(user: User = Depends(manager)):
     return user
 

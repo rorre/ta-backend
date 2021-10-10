@@ -26,3 +26,10 @@ class CourseDetailReponse(CourseResponse):
     link: t.Optional[str]
     notes: t.Optional[str]
     students: t.List[str]
+
+
+class UserResponse(BaseModel):
+    npm: int
+    username: str
+    name: str
+    is_admin: bool
