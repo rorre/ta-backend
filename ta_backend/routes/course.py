@@ -58,8 +58,13 @@ def _current_dt_aware():
     return datetime.utcnow().replace(tzinfo=pytz.utc).astimezone(jkt_timezone)
 
 
-def _create_coursedict(course: Course, user: User):
+async def _create_coursedict(course: Course, user: User, include_students=False):
     response = course.dict(exclude={"datetime", "matkul", "teacher", "students"})
+    if include_students:
+        student_count = len(course.students)
+    else:
+        student_count: int = await course.students.count()  # type: ignore
+
     response.update(
         {
             "id": str(course.id),
@@ -69,22 +74,30 @@ def _create_coursedict(course: Course, user: User):
             ),
             "teacher": course.teacher.name,
             "teacher_npm": course.teacher.npm,
-            "students_count": len(course.students),
+            "students_count": student_count,
             "is_enrolled": course in user.courses_taken or user.is_admin,
-            "students": [s.name for s in course.students],
         }
     )
+    if include_students:
+        response.update(
+            {
+                "students": [s.name for s in course.students],
+            }
+        )
     return response
 
 
 @router.get("/list", response_model=t.List[CourseResponse])
 async def courses_list(user: User = Depends(manager), page: int = Query(1)):
     courses = (
-        await Course.objects.paginate(page, 10).order_by("-datetime").select_all().all()
+        await Course.objects.paginate(page, 10)
+        .order_by("-datetime")
+        .select_related("teacher")
+        .all()
     )
     response = []
     for c in courses:
-        response.append(_create_coursedict(c, user))
+        response.append(await _create_coursedict(c, user))
     return response
 
 
@@ -101,12 +114,12 @@ async def courses_available(user: User = Depends(manager), page: int = Query(1))
         await Course.objects.filter(filters)
         .paginate(page, 10)
         .order_by("-datetime")
-        .select_all()
+        .select_related("teacher")
         .all()
     )
     response = []
     for c in courses:
-        response.append(_create_coursedict(c, user))
+        response.append(await _create_coursedict(c, user))
     return response
 
 
@@ -116,26 +129,25 @@ async def courses_mine(user: User = Depends(manager), page: int = Query(1)):
         await Course.objects.filter(Course.teacher.npm == user.npm)
         .paginate(page, 10)
         .order_by("-datetime")
-        .select_all()
         .all()
     )
     response = []
     for c in courses:
-        response.append(_create_coursedict(c, user))
+        response.append(await _create_coursedict(c, user))
     return response
 
 
 @router.get("/enrolled", response_model=t.List[CourseResponse])
 async def courses_enrolled(user: User = Depends(manager), page: int = Query(1)):
     courses = (
-        await user.courses_taken.select_all()
+        await user.courses_taken.select_related("teacher")
         .paginate(page, 10)
         .order_by("-datetime")
         .all()
     )
     response = []
     for c in courses:
-        response.append(_create_coursedict(c, user))
+        response.append(await _create_coursedict(c, user))
     return response
 
 
@@ -174,7 +186,7 @@ async def course_create(course: CourseCreate, user: User = Depends(manager)):
         course.students_limit = None
     c = await Course.objects.create(**course.dict())
     await c.update(teacher=user)
-    return _create_coursedict(c, user)
+    return await _create_coursedict(c, user)
 
 
 @router.post(
@@ -187,7 +199,7 @@ async def course_create(course: CourseCreate, user: User = Depends(manager)):
 async def course_enroll(course_id: UUID, user: User = Depends(manager)):
     redis_key = f"{str(course_id)}--detail"
 
-    c = await Course.objects.select_all().get_or_none(id=course_id)
+    c = await Course.objects.select_related("teacher").get_or_none(id=course_id)
     if not c:
         raise HTTPException(status_code=404, detail="Course not found!")
     if c.teacher == user:
@@ -200,7 +212,7 @@ async def course_enroll(course_id: UUID, user: User = Depends(manager)):
     current_time = _current_dt_aware().replace(tzinfo=pytz.utc) - timedelta(hours=7)
     if current_time > c.datetime:
         raise HTTPException(status_code=403, detail="Course has already started!")
-    if c.students_limit and len(c.students) >= c.students_limit:
+    if c.students_limit and (await c.students.count()) >= c.students_limit:  # type: ignore
         raise HTTPException(status_code=403, detail="Course is already full.")
 
     await c.students.add(user)
@@ -275,7 +287,7 @@ async def course_detail(course_id: UUID, user: User = Depends(manager)):
     if not c:
         raise HTTPException(status_code=404, detail="Course not found!")
 
-    course_dict = _create_coursedict(c, user)
+    course_dict = await _create_coursedict(c, user, include_students=True)
     await redis.set(redis_key, ujson.dumps(course_dict), ex=60)
     return course_dict
 
@@ -324,7 +336,7 @@ async def course_update(
         course_data.students_limit = None
     await c.update(**course_data.dict())
     await redis.delete(redis_key)
-    return _create_coursedict(c, user)
+    return await _create_coursedict(c, user)
 
 
 @router.delete(

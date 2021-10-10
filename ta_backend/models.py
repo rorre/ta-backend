@@ -54,5 +54,5 @@ class Course(ormar.Model):
     notes_short: str = ormar.String(max_length=100, nullable=True)
     hidden: bool = ormar.Boolean(default=False)
 
-    teacher = ormar.ForeignKey(User, related_name="courses_owned")
+    teacher = ormar.ForeignKey(User, related_name="courses_owned", nullable=False)
     students = ormar.ManyToMany(User, related_name="courses_taken")
