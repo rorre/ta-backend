@@ -243,6 +243,30 @@ async def course_unenroll(course_id: UUID, user: User = Depends(manager)):
 async def course_detail(course_id: UUID, user: User = Depends(manager)):
     redis_key = f"{str(course_id)}--detail"
 
+    # Try to figure out if current used is a student or teacher
+    # WITHOUT calling database, as we already have the data from
+    # user.
+    is_student = False
+    is_teacher = False
+
+    course: Course
+    for course in user.courses_taken:
+        if course.id == course_id:
+            is_student = True
+            break
+
+    for course in user.courses_owned:
+        if course.id == course_id:
+            is_teacher = True
+            break
+
+    can_fetch = is_student or is_teacher or user.is_admin
+    if not can_fetch:
+        raise HTTPException(
+            status_code=401, detail="You are not enrolled to this course."
+        )
+
+    # Search if cache exist in redis
     course_dict: str = await redis.get(redis_key)
     if course_dict:
         return ujson.loads(course_dict)
@@ -250,10 +274,6 @@ async def course_detail(course_id: UUID, user: User = Depends(manager)):
     c = await Course.objects.select_all().get_or_none(id=course_id)
     if not c:
         raise HTTPException(status_code=404, detail="Course not found!")
-    if not (user in c.students or user == c.teacher or user.is_admin):
-        raise HTTPException(
-            status_code=401, detail="You are not enrolled to this course."
-        )
 
     course_dict = _create_coursedict(c, user)
     await redis.set(redis_key, ujson.dumps(course_dict), ex=60)
