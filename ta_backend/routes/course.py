@@ -58,12 +58,30 @@ def _current_dt_aware():
     return datetime.utcnow().replace(tzinfo=pytz.utc).astimezone(jkt_timezone)
 
 
-async def _create_coursedict(course: Course, user: User, include_students=False):
+def _can_fetch_details(course_id: UUID, user: User) -> bool:
+    """Try to figure out if current used is a student or teacher
+    WITHOUT calling database, as we already have the data from
+    user."""
+    is_student = False
+    is_teacher = False
+
+    course: Course
+    for course in user.courses_taken:
+        if course.id == course_id:
+            is_student = True
+            break
+
+    for course in user.courses_owned:
+        if course.id == course_id:
+            is_teacher = True
+            break
+
+    return is_student or is_teacher or user.is_admin
+
+
+async def _create_coursedict(course: Course, user: User):
     response = course.dict(exclude={"datetime", "matkul", "teacher", "students"})
-    if include_students:
-        student_count = len(course.students)
-    else:
-        student_count: int = await course.students.count()  # type: ignore
+    student_count: int = await course.students.count()  # type: ignore
 
     response.update(
         {
@@ -78,12 +96,6 @@ async def _create_coursedict(course: Course, user: User, include_students=False)
             "is_enrolled": course in user.courses_taken or user.is_admin,
         }
     )
-    if include_students:
-        response.update(
-            {
-                "students": [s.name for s in course.students],
-            }
-        )
     return response
 
 
@@ -273,24 +285,7 @@ async def course_unenroll(course_id: UUID, user: User = Depends(manager)):
 async def course_detail(course_id: UUID, user: User = Depends(manager)):
     redis_key = f"{str(course_id)}--detail"
 
-    # Try to figure out if current used is a student or teacher
-    # WITHOUT calling database, as we already have the data from
-    # user.
-    is_student = False
-    is_teacher = False
-
-    course: Course
-    for course in user.courses_taken:
-        if course.id == course_id:
-            is_student = True
-            break
-
-    for course in user.courses_owned:
-        if course.id == course_id:
-            is_teacher = True
-            break
-
-    can_fetch = is_student or is_teacher or user.is_admin
+    can_fetch = _can_fetch_details(course_id, user)
     if not can_fetch:
         raise HTTPException(
             status_code=401, detail="You are not enrolled to this course."
@@ -301,13 +296,42 @@ async def course_detail(course_id: UUID, user: User = Depends(manager)):
     if course_dict:
         return ujson.loads(course_dict)
 
-    c = await Course.objects.select_all().get_or_none(id=course_id)
+    c = await Course.objects.select_related("teacher").get_or_none(id=course_id)
     if not c:
         raise HTTPException(status_code=404, detail="Course not found!")
 
-    course_dict = await _create_coursedict(c, user, include_students=True)
+    course_dict = await _create_coursedict(c, user)
     await redis.set(redis_key, ujson.dumps(course_dict))
     return course_dict
+
+
+@router.get(
+    "/{course_id}/students",
+    response_model=t.List[str],
+    dependencies=[Depends(RateLimiter(times=20, seconds=1))],
+)
+async def course_students(
+    course_id: UUID,
+    user: User = Depends(manager),
+    page: int = Query(1, gt=0),
+):
+    can_fetch = _can_fetch_details(course_id, user)
+    if not can_fetch:
+        raise HTTPException(
+            status_code=401, detail="You are not enrolled to this course."
+        )
+
+    c = await Course.objects.get_or_none(id=course_id)
+    if not c:
+        raise HTTPException(status_code=404, detail="Course not found!")
+
+    students = await c.students.fields({"name", "username"}).paginate(page, 10).all()
+    resp: t.List[str] = []
+
+    u: User
+    for u in students:
+        resp.append(u.name)
+    return resp
 
 
 @router.post(
