@@ -288,7 +288,7 @@ async def course_detail(course_id: UUID, user: User = Depends(manager)):
         raise HTTPException(status_code=404, detail="Course not found!")
 
     course_dict = await _create_coursedict(c, user, include_students=True)
-    await redis.set(redis_key, ujson.dumps(course_dict), ex=60)
+    await redis.set(redis_key, ujson.dumps(course_dict))
     return course_dict
 
 
