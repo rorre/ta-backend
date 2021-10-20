@@ -4,7 +4,7 @@ import httpx
 from ta_backend.models import Course, Subject
 
 jkt_timezone = timezone(timedelta(hours=7))
-description_fmt = "Course Name: {}\nTeacher: Rendy\nMatkul: {}\nDatetime: {}\nStudent Limit: {}\n\nCourse Code:```{}```"
+description_fmt = "Course Name: {}\nTeacher: {}\nMatkul: {}\nDatetime: {}\nStudent Limit: {}\n\nCourse Code:```{}```"
 
 
 def generate_webhook(course: Course):
