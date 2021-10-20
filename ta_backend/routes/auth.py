@@ -35,7 +35,7 @@ async def callback(ticket: str = Query(...)):
 
     user = await User.objects.get_or_create(
         npm=sso_response["attributes"]["npm"],
-        username=sso_response["username"],
+        username=sso_response["username"].lower(),
     )
     await user.update(name=sso_response["attributes"]["nama"])
 
