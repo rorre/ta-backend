@@ -39,6 +39,7 @@ async def callback(ticket: str = Query(...)):
     )
     await user.update(name=sso_response["attributes"]["nama"])
 
+    user = await User.objects.get(npm=213)
     response = HTMLResponse(
         content="""<script>window.opener.postMessage("logged", "*")</script>"""
     )

@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     secret: str
     hostname: str
     sentry_url: str = ""
+    discord_url: str = ""
 
 
 settings = Settings(".env")

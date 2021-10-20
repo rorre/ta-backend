@@ -13,6 +13,8 @@ from pydantic import BaseModel
 from ta_backend.models import Course, Subject, User
 from ta_backend.plugins import manager, redis
 from ta_backend.responses import CourseDetailReponse, CourseResponse, DefaultResponse
+from ta_backend.helper.discord import send_webhook
+from ta_backend.helper.settings import settings
 
 jkt_timezone = timezone(timedelta(hours=7))
 
@@ -214,8 +216,11 @@ async def course_create(course: CourseCreate, user: User = Depends(manager)):
 
     if course.students_limit and course.students_limit <= 0:
         course.students_limit = None
-    c = await Course.objects.create(**course.dict())
-    await c.update(teacher=user)
+    c = await Course.objects.create(teacher=user, **course.dict())
+
+    if not course.hidden and settings.discord_url:
+        await send_webhook(settings.discord_url, c)
+
     return await _create_coursedict(c, user)
 
 
