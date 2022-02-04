@@ -18,4 +18,4 @@ redis = aioredis.from_url(settings.redis_url, encoding="utf-8", decode_responses
 
 @manager.user_loader()  # type: ignore
 async def get_user(identifier):
-    return await User.objects.select_related("courses_taken").get_or_none(**identifier)
+    return await User.objects.select_all().get_or_none(**identifier)
